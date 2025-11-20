@@ -1,0 +1,11 @@
+fastapi==0.104.1
+uvicorn==0.24.0
+python-multipart==0.0.6
+pytesseract==0.3.10
+opencv-python-headless==4.8.1.78
+gtts==2.5.1
+python-dotenv==1.0.0
+symspellpy==6.7.7
+numpy<2.0.0
+pillow>=10.3.0
+deep-translator==1.11.4

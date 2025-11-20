@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="kn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ಚಿತ್ರವಚಕ - Kannada Image Reader</title>
+    
+    <!-- Theme & PWA meta -->
+    <meta name="theme-color" content="#4a00e0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ಚಿತ್ರವಚಕ">
+    <meta name="description" content="Extract and read Kannada text from images with text-to-speech">
+
+    <!-- Manifest for PWA -->
+    <link rel="manifest" href="/manifest.json" crossorigin="use-credentials">
+
+    <!-- Icons -->
+    <link rel="icon" href="/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Initial Screen -->
+        <div id="initial-screen">
+            <div class="header">
+                <h1>ಚಿತ್ರವಾಚಕ</h1>
+                <p>ಕನ್ನಡ ಇಮೇಜ್-ಟು-ಸ್ಪೀಚ್ ಓದುಗ</p>
+            </div>
+            
+            <div class="content">
+                <div class="option-card" id="open-camera">
+                    <h2>📷 ಕ್ಯಾಮರಾ ತೆರೆ</h2>
+                    <p>ಪಠ್ಯವಿರುವ ಚಿತ್ರವನ್ನು ಸೆರೆಹಿಡಿಯಿರಿ</p>
+                </div>
+                
+                <div class="divider"><span>ಅಥವಾ</span></div>
+                
+                <div class="option-card" id="upload-image">
+                    <h2>📁 ಚಿತ್ರ ಅಪ್ಲೋಡ್ ಮಾಡಿ</h2>
+                    <p>ನಿಮ್ಮ ಸಾಧನದಿಂದ ಚಿತ್ರವನ್ನು ಆಯ್ಕೆಮಾಡಿ</p>
+                </div>
+                
+                <input type="file" id="file-input" class="file-input" accept="image/*">
+            </div>
+            
+            <div class="footer">
+                <p>ಕನ್ನಡ ಪಠ್ಯಕ್ಕೆ ಪ್ರವೇಶಯೋಗ್ಯ ಇಮೇಜ್-ಟು-ಸ್ಪೀಚ್</p>
+                <button id="install-btn" class="install-btn hidden">📲 ಅಪ್ಲಿಕೇಶನ್‌ನನ್ನು ಇನ್‌ಸ್ಟಾಲ್ ಮಾಡಿ</button>
+            </div>
+        </div>
+        
+        <!-- Camera Screen -->
+        <div id="camera-screen" class="hidden">
+            <div class="camera-container">
+                <video id="camera-view" class="camera-view" autoplay playsinline></video>
+                <div id="camera-placeholder">
+                    <div class="camera-icon">📷</div>
+                    <p>ಕ್ಯಾಮೆರಾ ಲೋಡ್ ಆಗುತ್ತಿದೆ...</p>
+                </div>
+                
+                <button class="back-btn" id="back-from-camera">← ಹಿಂದಕ್ಕೆ</button>
+                
+                <div class="camera-controls">
+                    <button class="capture-btn" id="capture-btn">
+                        <div class="capture-btn-inner"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Processing Screen -->
+        <div id="processing-screen" class="hidden">
+            <div class="processing-container">
+                <div class="processing-icon"><div class="spinner"></div></div>
+                <div class="processing-text">
+                    <h2>ಚಿತ್ರ ಪ್ರಕ್ರಿಯೆ...</h2>
+                    <p>ಪಠ್ಯವನ್ನು ಹೊರತೆಗೆಯಲಾಗುತ್ತಿದೆ</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Result Screen -->
+        <div id="result-screen" class="hidden">
+            <div class="header">
+                <h1>ಪರಿಣಾಮ</h1>
+                <p>ಗುರುತಿಸಲಾದ ಪಠ್ಯ</p>
+            </div>
+            
+            <div class="content">
+                <!-- Captured Image -->
+                <img id="result-image" src="" alt="Captured Image" style="max-width:100%; margin-bottom:1rem;" />
+
+                <!-- Extracted Text -->
+                <div class="result-card">
+                    <h3>✍️ ಗುರುತಿಸಲಾದ ಪಠ್ಯ:</h3>
+                    <div id="result-text" class="result-text"></div>
+
+                    <!-- Audio Buttons -->
+                    <div class="result-actions">
+                        <!-- JS will populate Kannada/English/Hindi TTS buttons dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <button id="back-to-home" class="back-btn">🏠 ಮುಖಪುಟಕ್ಕೆ ಹಿಂದಿರುಗಿ</button>
+            </div>
+        </div>
+        
+        <!-- Error Screen -->
+        <div id="error-screen" class="hidden">
+            <div class="processing-container">
+                <div class="error-icon">⚠️</div>
+                <div class="processing-text">
+                    <h2>ದೋಷ ಸಂಭವಿಸಿದೆ</h2>
+                    <p id="error-message">ಕ್ಷಮಿಸಿ, ಏನೋ ತಪ್ಪಾಗಿದೆ</p>
+                </div>
+                <button id="error-back" class="action-btn primary">ಹಿಂದಕ್ಕೆ ಹೋಗಿ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script -->
+    <script src="script.js"></script>
+</body>
+</html>
