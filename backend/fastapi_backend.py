@@ -64,6 +64,7 @@ async def process(file: UploadFile = File(...)):
 
     upload_filename = f"{uuid.uuid4().hex}.jpg"
     upload_path = f"static/uploads/{upload_filename}"
+
     with open(upload_path, "wb") as f:
         f.write(contents)
 
@@ -85,12 +86,10 @@ async def process(file: UploadFile = File(...)):
             "error": "No text found"
         }
 
-    # Create audio files
     audio_kn_file = f"static/audio/{uuid.uuid4().hex}_kn.mp3"
     audio_en_file = f"static/audio/{uuid.uuid4().hex}_en.mp3"
     audio_hi_file = f"static/audio/{uuid.uuid4().hex}_hi.mp3"
 
-    # Run processes concurrently
     trans_en_task = asyncio.create_task(async_translate(text_kn, "en"))
     trans_hi_task = asyncio.create_task(async_translate(text_kn, "hi"))
     tts_kn_task = asyncio.create_task(async_tts(text_kn, "kn", audio_kn_file))
@@ -113,11 +112,10 @@ async def process(file: UploadFile = File(...)):
     }
 
 # ----------------- Static File Mount -----------------
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ----------------- Run (local / Railway) -----------------
-if __name__ == "__main__":   # ✅ FIXED
+if __name__ == "__main__":     # ✅ THIS FIXES YOUR BACKEND
     import uvicorn
     port = int(os.environ.get("PORT", 8080))
     uvicorn.run("backend.fastapi_backend:app", host="0.0.0.0", port=port)
