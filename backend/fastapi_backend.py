@@ -23,7 +23,7 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # allow Netlify / Android / localhost / anything
+    allow_origins=["*"],      
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -32,7 +32,6 @@ app.add_middleware(
 # ----------------- Static Folders -----------------
 os.makedirs("static/audio", exist_ok=True)
 os.makedirs("static/uploads", exist_ok=True)
-
 
 # ----------------- Async Helpers -----------------
 async def async_tts(text, lang, filename):
@@ -44,7 +43,6 @@ async def async_translate(text, target_lang):
     translator = GoogleTranslator(source="kn", target=target_lang)
     return await loop.run_in_executor(None, translator.translate, text)
 
-
 # ----------------- Endpoints -----------------
 @app.get("/")
 async def root():
@@ -53,7 +51,6 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
-
 
 @app.post("/process/")
 async def process(file: UploadFile = File(...)):
@@ -77,24 +74,16 @@ async def process(file: UploadFile = File(...)):
     text_kn = extract_text(image, upload_filename)
 
     if not text_kn.strip():
-        return JSONResponse(
-            content={
-                "image_url": f"/static/uploads/{upload_filename}",
-                "text_kn": "",
-                "audio_kn": None,
-                "text_en": "",
-                "audio_en": None,
-                "text_hi": "",
-                "audio_hi": None,
-                "error": "No text found"
-            },
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "*",
-                "Access-Control-Allow-Headers": "*",
-                "X-Content-Type-Options": "nosniff"
-            }
-        )
+        return {
+            "image_url": f"/static/uploads/{upload_filename}",
+            "text_kn": "",
+            "audio_kn": None,
+            "text_en": "",
+            "audio_en": None,
+            "text_hi": "",
+            "audio_hi": None,
+            "error": "No text found"
+        }
 
     # Create audio files
     audio_kn_file = f"static/audio/{uuid.uuid4().hex}_kn.mp3"
@@ -107,36 +96,28 @@ async def process(file: UploadFile = File(...)):
     tts_kn_task = asyncio.create_task(async_tts(text_kn, "kn", audio_kn_file))
 
     text_en, text_hi = await asyncio.gather(trans_en_task, trans_hi_task)
+
     tts_en_task = asyncio.create_task(async_tts(text_en, "en", audio_en_file))
     tts_hi_task = asyncio.create_task(async_tts(text_hi, "hi", audio_hi_file))
     await asyncio.gather(tts_kn_task, tts_en_task, tts_hi_task)
 
-    return JSONResponse(
-        content={
-            "image_url": f"/static/uploads/{upload_filename}",
-            "text_kn": text_kn,
-            "audio_kn": f"/{audio_kn_file}",
-            "text_en": text_en,
-            "audio_en": f"/{audio_en_file}",
-            "text_hi": text_hi,
-            "audio_hi": f"/{audio_hi_file}",
-            "error": None
-        },
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "*",
-            "Access-Control-Allow-Headers": "*",
-            "X-Content-Type-Options": "nosniff"
-        }
-    )
-
+    return {
+        "image_url": f"/static/uploads/{upload_filename}",
+        "text_kn": text_kn,
+        "audio_kn": f"/{audio_kn_file}",
+        "text_en": text_en,
+        "audio_en": f"/{audio_en_file}",
+        "text_hi": text_hi,
+        "audio_hi": f"/{audio_hi_file}",
+        "error": None
+    }
 
 # ----------------- Static File Mount -----------------
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # ----------------- Run (local / Railway) -----------------
-if __name__ == "__main__":
+if __name__ == "__main__":   # ✅ FIXED
     import uvicorn
     port = int(os.environ.get("PORT", 8080))
     uvicorn.run("backend.fastapi_backend:app", host="0.0.0.0", port=port)
