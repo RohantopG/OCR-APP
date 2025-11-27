@@ -29,9 +29,18 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# ----------------- Static Folders -----------------
-os.makedirs("static/audio", exist_ok=True)
-os.makedirs("static/uploads", exist_ok=True)
+# ----------------- Static Folders (ABSOLUTE PATH FIX) -----------------
+BASE_DIR = os.getcwd()  # ROOT DIR inside Railway
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
+UPLOADS_DIR = os.path.join(STATIC_DIR, "uploads")
+
+os.makedirs(AUDIO_DIR, exist_ok=True)
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+
+print("STATIC DIR:", STATIC_DIR)
+print("AUDIO DIR:", AUDIO_DIR)
+print("UPLOAD DIR:", UPLOADS_DIR)
 
 
 # ----------------- Async Helpers -----------------
@@ -66,9 +75,12 @@ async def process(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Empty file")
 
     upload_filename = f"{uuid.uuid4().hex}.jpg"
-    upload_path = f"static/uploads/{upload_filename}"
+    upload_path = os.path.join(UPLOADS_DIR, upload_filename)
+
     with open(upload_path, "wb") as f:
         f.write(contents)
+
+    print("Uploaded file saved:", upload_path)
 
     image = Image.open(io.BytesIO(contents))
     if image.mode != "RGB":
@@ -87,55 +99,46 @@ async def process(file: UploadFile = File(...)):
                 "text_hi": "",
                 "audio_hi": None,
                 "error": "No text found"
-            },
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "*",
-                "Access-Control-Allow-Headers": "*",
-                "X-Content-Type-Options": "nosniff"
             }
         )
 
     # Create audio files
-    audio_kn_file = f"static/audio/{uuid.uuid4().hex}_kn.mp3"
-    audio_en_file = f"static/audio/{uuid.uuid4().hex}_en.mp3"
-    audio_hi_file = f"static/audio/{uuid.uuid4().hex}_hi.mp3"
+    audio_kn_file = os.path.join(AUDIO_DIR, f"{uuid.uuid4().hex}_kn.mp3")
+    audio_en_file = os.path.join(AUDIO_DIR, f"{uuid.uuid4().hex}_en.mp3")
+    audio_hi_file = os.path.join(AUDIO_DIR, f"{uuid.uuid4().hex}_hi.mp3")
 
-    # Run processes concurrently
+    print("Creating audio:", audio_kn_file)
+
+    # Run translation + TTS
     trans_en_task = asyncio.create_task(async_translate(text_kn, "en"))
     trans_hi_task = asyncio.create_task(async_translate(text_kn, "hi"))
     tts_kn_task = asyncio.create_task(async_tts(text_kn, "kn", audio_kn_file))
 
     text_en, text_hi = await asyncio.gather(trans_en_task, trans_hi_task)
+
     tts_en_task = asyncio.create_task(async_tts(text_en, "en", audio_en_file))
     tts_hi_task = asyncio.create_task(async_tts(text_hi, "hi", audio_hi_file))
     await asyncio.gather(tts_kn_task, tts_en_task, tts_hi_task)
 
-    return JSONResponse(
-        content={
-            "image_url": f"/static/uploads/{upload_filename}",
-            "text_kn": text_kn,
-            "audio_kn": f"/{audio_kn_file}",
-            "text_en": text_en,
-            "audio_en": f"/{audio_en_file}",
-            "text_hi": text_hi,
-            "audio_hi": f"/{audio_hi_file}",
-            "error": None
-        },
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "*",
-            "Access-Control-Allow-Headers": "*",
-            "X-Content-Type-Options": "nosniff"
-        }
-    )
+    print("Audio created successfully")
+
+    return {
+        "image_url": f"/static/uploads/{upload_filename}",
+        "text_kn": text_kn,
+        "audio_kn": f"/static/audio/{os.path.basename(audio_kn_file)}",
+        "text_en": text_en,
+        "audio_en": f"/static/audio/{os.path.basename(audio_en_file)}",
+        "text_hi": text_hi,
+        "audio_hi": f"/static/audio/{os.path.basename(audio_hi_file)}",
+        "error": None
+    }
 
 
-# ----------------- Static File Mount -----------------
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# ----------------- Static Mount (FIXED) -----------------
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
-# ----------------- Run (local / Railway) -----------------
+# ----------------- Run -----------------
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8080))
