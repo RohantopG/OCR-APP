@@ -20,27 +20,22 @@ app = FastAPI(title="ಚಿತ್ರವಚಕ API", version="1.3.5")
 
 # ----------------- Security + CORS -----------------
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # allow Netlify / Android / localhost / anything
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
 
 # ----------------- Static Folders (ABSOLUTE PATH FIX) -----------------
-BASE_DIR = os.getcwd()  # ROOT DIR inside Railway
+BASE_DIR = os.getcwd()
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
 UPLOADS_DIR = os.path.join(STATIC_DIR, "uploads")
 
 os.makedirs(AUDIO_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
-
-print("STATIC DIR:", STATIC_DIR)
-print("AUDIO DIR:", AUDIO_DIR)
-print("UPLOAD DIR:", UPLOADS_DIR)
 
 
 # ----------------- Async Helpers -----------------
@@ -74,42 +69,37 @@ async def process(file: UploadFile = File(...)):
     if not contents:
         raise HTTPException(status_code=400, detail="Empty file")
 
+    # Save image
     upload_filename = f"{uuid.uuid4().hex}.jpg"
     upload_path = os.path.join(UPLOADS_DIR, upload_filename)
-
     with open(upload_path, "wb") as f:
         f.write(contents)
-
-    print("Uploaded file saved:", upload_path)
 
     image = Image.open(io.BytesIO(contents))
     if image.mode != "RGB":
         image = image.convert("RGB")
 
+    # OCR
     text_kn = extract_text(image, upload_filename)
 
     if not text_kn.strip():
-        return JSONResponse(
-            content={
-                "image_url": f"/static/uploads/{upload_filename}",
-                "text_kn": "",
-                "audio_kn": None,
-                "text_en": "",
-                "audio_en": None,
-                "text_hi": "",
-                "audio_hi": None,
-                "error": "No text found"
-            }
-        )
+        return {
+            "image_url": f"/static/uploads/{upload_filename}",
+            "text_kn": "",
+            "audio_kn": None,
+            "text_en": "",
+            "audio_en": None,
+            "text_hi": "",
+            "audio_hi": None,
+            "error": "No text found"
+        }
 
-    # Create audio files
+    # Audio paths
     audio_kn_file = os.path.join(AUDIO_DIR, f"{uuid.uuid4().hex}_kn.mp3")
     audio_en_file = os.path.join(AUDIO_DIR, f"{uuid.uuid4().hex}_en.mp3")
     audio_hi_file = os.path.join(AUDIO_DIR, f"{uuid.uuid4().hex}_hi.mp3")
 
-    print("Creating audio:", audio_kn_file)
-
-    # Run translation + TTS
+    # Translate + TTS (concurrent)
     trans_en_task = asyncio.create_task(async_translate(text_kn, "en"))
     trans_hi_task = asyncio.create_task(async_translate(text_kn, "hi"))
     tts_kn_task = asyncio.create_task(async_tts(text_kn, "kn", audio_kn_file))
@@ -119,8 +109,6 @@ async def process(file: UploadFile = File(...)):
     tts_en_task = asyncio.create_task(async_tts(text_en, "en", audio_en_file))
     tts_hi_task = asyncio.create_task(async_tts(text_hi, "hi", audio_hi_file))
     await asyncio.gather(tts_kn_task, tts_en_task, tts_hi_task)
-
-    print("Audio created successfully")
 
     return {
         "image_url": f"/static/uploads/{upload_filename}",
